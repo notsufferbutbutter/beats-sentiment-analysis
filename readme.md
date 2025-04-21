@@ -1,7 +1,6 @@
 # Beats Product Sentiment Analysis 🚀  
 ### NLP-Powered Reddit Comment Scraper with Automated Pipeline
 
-
 A Python-based data pipeline that:
 - Automatically **extracts** Reddit comments from selected posts
 - **Analyzes** them using a fine-tuned RoBERTa sentiment model
