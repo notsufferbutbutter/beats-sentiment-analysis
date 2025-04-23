@@ -1,0 +1,6 @@
+pandas
+praw
+transformers
+openpyxl
+python-dotenv
+torch torchvision
