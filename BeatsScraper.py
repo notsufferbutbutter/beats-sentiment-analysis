@@ -11,6 +11,22 @@ from praw.models import Comment
 from transformers import pipeline
 # Load model directly
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import streamlit as st
+
+
+# Set the title of the Streamlit app
+st.title("Product Sentiment Analysis Based on Reddit Comments")
+# Set the description of the Streamlit app
+st.markdown(
+    '''created by Hoang Linh Pham
+    \n
+    This app analyzes the sentiment of comments on Reddit posts about a product based on a given URL.
+    It uses the PRAW library to access Reddit API and fetch comments.
+    The comments are then analyzed using a pre-trained sentiment analysis model.
+    The app provides a summary of the sentiment of the comments'''
+)
+# Set the url input field for the user to enter a Reddit URL
+url_input = st.text_input("Enter Reddit URL")
 
 # Define a dictionary to hold fixed data
 FIX_DATA = {
@@ -23,7 +39,7 @@ FIX_DATA = {
 SENTIMENT_MODEL = "cardiffnlp/twitter-roberta-base-sentiment"
 # Load the sentiment analysis model and tokenizer
 tokenizer = AutoTokenizer.from_pretrained(SENTIMENT_MODEL)
-model = AutoModelForSequenceClassification.from_pretrained(SENTIMENT_MODEL)
+model = AutoModelForSequenceClassification.from_pretrained(SENTIMENT_MODEL, torch_dtype=None)
 # Create pipeline for sentiment analysis
 sentiment_pipeline = pipeline(
     "sentiment-analysis",
@@ -93,15 +109,30 @@ def commentAnalyzingThroughRedditURL(url: str) -> List[dict]:
 
 # Define a list to hold all rows of data
 all_rows = []
-# Define a list of Reddit URLs to analyze
-url1WeekPost = "https://www.reddit.com/r/beatsbydre/comments/1hch8sa/1week_review_of_beats_studio_pro/"
-urlBeatsImpression = "https://www.reddit.com/r/beatsbydre/comments/1554cui/beats_studio_pro_impressions/"
-urlBeatsThoughts = "https://www.reddit.com/r/beatsbydre/comments/15emhk0/beats_studio_pro_reviewthoughts/"
-# Iterate through the list of URLs and analyze comments from each URL
-for url in [url1WeekPost, urlBeatsImpression, urlBeatsThoughts]:
-    all_rows.extend(commentAnalyzingThroughRedditURL(url))
 
-# Create a DataFrame from the list of rows
-df = pd.DataFrame(all_rows)
-output_path = Path("./data_output") / "BeatsScraper.xlsx"
-df.to_excel(output_path, index=False, engine="openpyxl")
+if st.button("Analyze"):
+    duck_holder = st.empty()
+    # If the user enters a URL, analyze comments from that URL
+    with st.spinner("Analyzing... Wanna take a coffee break?"):
+        with duck_holder:
+            st.markdown(
+                '''
+                <div style="display: flex; justify-content: center;">
+                    <img src="https://i.gifer.com/XOsX.gif" alt="Loading...">
+                </div>
+                ''',
+                unsafe_allow_html=True
+            )
+        # Call the function to analyze comments from the URL
+        # and extend the list of all rows with the all_row object
+        all_rows.extend(commentAnalyzingThroughRedditURL(url_input))
+    duck_holder.empty()
+    st.success("Analysis complete!")
+    st.balloons()
+    # Create a DataFrame from the list of rows
+    df = pd.DataFrame(all_rows)
+    st.dataframe(df)
+
+
+#output_path = Path("./data_output") / "BeatsScraper.xlsx"
+#df.to_excel(output_path, index=False, engine="openpyxl")
