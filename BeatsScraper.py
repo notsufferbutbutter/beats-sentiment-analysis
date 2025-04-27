@@ -26,7 +26,8 @@ st.markdown(
     The app provides a summary of the sentiment of the comments'''
 )
 # Set the url input field for the user to enter a Reddit URL
-url_input = st.text_input("Enter Reddit URL")
+#url_input = st.text_input("Enter Reddit URL")
+product_name = st.text_input("Enter Product Name:")
 
 # Define a dictionary to hold fixed data
 FIX_DATA = {
@@ -36,10 +37,10 @@ FIX_DATA = {
 }
 
 # The model is a fine-tuned version of RoBERTa for sentiment analysis
-SENTIMENT_MODEL = "cardiffnlp/twitter-roberta-base-sentiment"
+model_name = "yangheng/deberta-v3-base-absa-v1.1"
 # Load the sentiment analysis model and tokenizer
-tokenizer = AutoTokenizer.from_pretrained(SENTIMENT_MODEL)
-model = AutoModelForSequenceClassification.from_pretrained(SENTIMENT_MODEL, torch_dtype=None)
+tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
+model = AutoModelForSequenceClassification.from_pretrained(model_name)
 # Create pipeline for sentiment analysis
 sentiment_pipeline = pipeline(
     "sentiment-analysis",
@@ -71,6 +72,17 @@ def analyze(text: str) -> Tuple[str, float]:
 # Load environment variables from .env file
 load_dotenv()
 
+#Collect url based on product name
+def collect_url(product_name:str) -> List[str]:
+    # Use the Reddit API to search for posts related to the product name
+    # The search is limited to the last 1000 posts
+    # The search is sorted by relevance
+    # The search is limited to the "all" subreddit
+    url = []
+    for submission in redditData.subreddit("all").search(product_name, limit=10, sort='revelence'):
+        url.append(submission.url)
+    return url
+
 # Access Reddit API
 redditData = praw.Reddit(
     client_id=os.getenv("REDDIT_CLIENT_ID"),
@@ -94,6 +106,11 @@ def commentAnalyzingThroughRedditURL(url: str) -> List[dict]:
     # For each comment, analyze its sentiment and create a row of data holding the fixed data and comment data
     # The comment data includes the date of conversation, username, main topic, sentiment, conversation snippet, and sentiment score
     for comment in submission.comments.list():
+        # Skip comments that does not contain product name
+        if product_name.lower() not in comment.body.lower():
+            continue
+        # Analyze the sentiment of the comment
+        # The analyze function returns a tuple with the sentiment label and score
         sentimentTuple = analyze(comment.body)
         rows.append({
             **FIX_DATA,
@@ -107,6 +124,8 @@ def commentAnalyzingThroughRedditURL(url: str) -> List[dict]:
         })
     return rows
 
+# Get the URL from the user input
+url_input = collect_url(product_name)
 # Define a list to hold all rows of data
 all_rows = []
 
@@ -125,7 +144,8 @@ if st.button("Analyze"):
             )
         # Call the function to analyze comments from the URL
         # and extend the list of all rows with the all_row object
-        all_rows.extend(commentAnalyzingThroughRedditURL(url_input))
+        for url in url_input:
+            all_rows.extend(commentAnalyzingThroughRedditURL(url_input))
     duck_holder.empty()
     st.success("Analysis complete!")
     st.balloons()
