@@ -31,13 +31,12 @@ product_name = st.text_input("Enter Product Name:")
 
 # Define a dictionary to hold fixed data
 FIX_DATA = {
-    "Product Name": "Beats Studio Pro",
+    "Product Name": product_name,
     "Source": "Reddit",
-    "Launch Date": "July 19th, 2023",
 }
 
 # The model is a fine-tuned version of RoBERTa for sentiment analysis
-model_name = "yangheng/deberta-v3-base-absa-v1.1"
+model_name = "cardiffnlp/twitter-roberta-base-sentiment"
 # Load the sentiment analysis model and tokenizer
 tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
 model = AutoModelForSequenceClassification.from_pretrained(model_name)
@@ -78,10 +77,11 @@ def collect_url(product_name:str) -> List[str]:
     # The search is limited to the last 1000 posts
     # The search is sorted by relevance
     # The search is limited to the "all" subreddit
-    url = []
-    for submission in redditData.subreddit("all").search(product_name, limit=10, sort='revelence'):
-        url.append(submission.url)
-    return url
+    urls = []
+    for submission in redditData.subreddit("all").search(product_name, limit=10, sort='relevance'):
+        post_url = f"https://www.reddit.com{submission.permalink}"
+        urls.append(post_url)
+    return urls
 
 # Access Reddit API
 redditData = praw.Reddit(
@@ -101,14 +101,15 @@ def commentAnalyzingThroughRedditURL(url: str) -> List[dict]:
     # The submission object contains the post and its comments
     submission = redditData.submission(url=url)
     # Replace "more comments" with actual comments
-    submission.comments.replace_more(limit=None)
+    submission.comments.replace_more(limit=10)
     # Iterate through the comments in the submission
     # For each comment, analyze its sentiment and create a row of data holding the fixed data and comment data
     # The comment data includes the date of conversation, username, main topic, sentiment, conversation snippet, and sentiment score
     for comment in submission.comments.list():
+        if not comment.body or len(comment.body) > 10000:  # Skip very long comments that might cause issues
+                continue
         # Skip comments that does not contain product name
-        if product_name.lower() not in comment.body.lower():
-            continue
+        if product_name.lower() not in comment.body.lower(): continue
         # Analyze the sentiment of the comment
         # The analyze function returns a tuple with the sentiment label and score
         sentimentTuple = analyze(comment.body)
@@ -145,7 +146,7 @@ if st.button("Analyze"):
         # Call the function to analyze comments from the URL
         # and extend the list of all rows with the all_row object
         for url in url_input:
-            all_rows.extend(commentAnalyzingThroughRedditURL(url_input))
+            all_rows.extend(commentAnalyzingThroughRedditURL(url))
     duck_holder.empty()
     st.success("Analysis complete!")
     st.balloons()
